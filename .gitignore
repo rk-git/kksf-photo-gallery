@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+*.tsbuildinfo
+
+# Local secrets
+.env
+.env.*
+!.env.example
+.dev.vars
+
+# Wrangler local state
+.wrangler/
+
+# macOS
+.DS_Store
+
+# IDE
+.idea/
+.vscode/

@@ -120,8 +120,15 @@ nav{align-items:center;justify-content:center}
   border-radius:50%;
   font:300 29px/1 'DM Sans',sans-serif;
 }
-.lightbox-caption{max-width:80vw;text-align:center;line-height:1.5}
-@media(max-width:600px){
+.lightbox-caption{
+  max-width:80vw;
+  text-align:center;
+  line-height:1.5;
+  font-weight:700;
+  color:#fff;
+  font-size:15px;
+  text-shadow:0 1px 3px #000;
+}@media(max-width:600px){
   .lightbox{padding:14px 8px}
   .lightbox-frame{padding:9px;max-width:calc(100vw - 24px)}
   .lightbox-frame img{max-width:calc(100vw - 48px);max-height:75vh}
@@ -129,7 +136,7 @@ nav{align-items:center;justify-content:center}
   .lightbox-prev{left:5px}
   .lightbox-next{right:5px}
   .lightbox-close{top:8px;right:9px}
-  .lightbox-caption{font-size:11px;max-width:94vw}
+  .lightbox-caption{font-size:13px;max-width:94vw}
 }
 
 

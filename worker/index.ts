@@ -69,10 +69,16 @@ async function allMetadata(bucket: R2Bucket): Promise<Meta[]> {
       cursor,
     });
 
-    for (const obj of page.objects) {
-      const stored = await bucket.get(obj.key);
-      if (stored) items.push(await stored.json<Meta>());
-    }
+    const pageItems = await Promise.all(
+      page.objects.map(async obj => {
+        const stored = await bucket.get(obj.key);
+        return stored ? stored.json<Meta>() : null;
+      })
+    );
+
+    items.push(
+      ...pageItems.filter((item): item is Meta => item !== null)
+    );
 
     cursor = page.truncated ? page.cursor : undefined;
   } while (cursor);
@@ -172,6 +178,30 @@ export default {
       );
 
       return json(request, events);
+    }
+
+    // API: verify administrator credentials.
+    if (path === '/api/auth' && request.method === 'POST') {
+      const origin = request.headers.get('Origin');
+
+      if (origin && !ALLOWED_ORIGINS.has(origin)) {
+        return json(request, { error: 'Origin not allowed' }, 403);
+      }
+
+      let body: { password?: string };
+
+      try {
+        body = await request.json() as { password?: string };
+      } catch {
+        return json(request, { error: 'Invalid request' }, 400);
+      }
+
+      if (!env.ADMIN_PASSWORD ||
+          body.password !== env.ADMIN_PASSWORD) {
+        return json(request, { error: 'Invalid administrator password' }, 401);
+      }
+
+      return json(request, { authenticated: true });
     }
 
     // API: authenticated photo upload.

@@ -38,7 +38,37 @@ export default function App() {
     }
   }, [events]);
   useEffect(() => { const urls = files.map(f => URL.createObjectURL(f)); setLocalPreviews(urls); return () => urls.forEach(URL.revokeObjectURL); }, [files]);
-  function signIn() { if (!password.trim()) return; sessionStorage.setItem('inspire-admin', password); setLoggedIn(true); setMessage('Admin session ready.'); }
+
+async function signIn() {
+  if (!password.trim()) {
+    setMessage('Please enter the administrator password.');
+    return;
+  }
+
+  setBusy(true);
+  setMessage('');
+
+  try {
+    const response = await fetch(`${API}/api/auth`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password }),
+    });
+
+    if (!response.ok) {
+      setMessage('Incorrect administrator password. Please try again.');
+      return;
+    }
+
+    sessionStorage.setItem('inspire-admin', password);
+    setLoggedIn(true);
+    setMessage('Administrator authenticated successfully.');
+  } catch {
+    setMessage('Unable to contact the authentication service.');
+  } finally {
+    setBusy(false);
+  }
+}
   function signOut() { sessionStorage.removeItem('inspire-admin'); setLoggedIn(false); setPassword(''); }
   async function upload() {
     const existingEvent = events.find(event => event.id === appendEventId);
@@ -142,11 +172,46 @@ export default function App() {
   return <main className="shell">
     <header className="site-header"><div className="brand-lockup"><img className="brand-mark" src="https://kksfusa.org/favicon.ico" alt="KKSF logo" onError={e=>{e.currentTarget.style.display='none';}}/><div className="brand-copy"><h1>Kanchi Mutt Photo Gallery</h1><p>Gallery of KKSF events</p></div></div></header>
     <div className="banner-frame"><img className="community-banner" src="/kanchi-mutt-banner.jpeg" alt="Kanchi Mutt spiritual teachers and devotional imagery" /></div>
+       {adminMode && !loggedIn ? (
+      <section className="admin-login-gateway">
+        <div className="admin-login-card">
+          <span className="eyebrow">KANCHI MUTT PHOTO GALLERY</span>
+          <h2>Administrator Login</h2>
+          <p>Sign in to manage community event photographs.</p>
+          <label>
+            Administrator password
+            <input
+              type="password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              placeholder="Enter administrator password"
+              onKeyDown={e => {
+                if (e.key === 'Enter') void signIn();
+              }}
+              autoFocus
+            />
+          </label>
+          <button
+            className="primary"
+            disabled={busy}
+            onClick={() => void signIn()}
+          >
+            {busy ? 'Signing in…' : 'Sign In'}
+          </button>
+          {message && <p className="login-error" role="alert">{message}</p>}
+        </div>
+      </section>
+    ) : (
+      <>
     {adminMode && <nav><button className={tab==='gallery'?'active':''} onClick={()=>{setTab('gallery');setSelectedEvent(null);}}>Events gallery</button><button className={tab==='upload'?'active':''} onClick={()=>{setTab('upload');setSelectedEvent(null);}}>Upload photos</button></nav>}
     {message && <div className="notice" role="status">{message}<button onClick={()=>setMessage('')} aria-label="Dismiss">×</button></div>}
     {tab === 'upload' && lastUploadedEvent && <section className="upload-success panel" role="status"><span className="eyebrow">UPLOAD COMPLETE</span><h2>{lastUploadedEvent.title}</h2><p>{lastUploadedEvent.count} photograph(s) were successfully added to this event.</p><div className="event-share-url">{`${PUBLIC_BASE}/e/${lastUploadedEvent.id}`}</div><div className="actions"><button className="primary" onClick={()=>void copyEventLink(lastUploadedEvent.id)}>Copy event link</button><button className="quiet" onClick={()=>{const event=events.find(e=>e.id===lastUploadedEvent.id); if(event){setSelectedEvent(event);setTab('gallery');}}}>View event</button></div></section>}
     {tab === 'upload' ? <section className="panel"><div className="section-heading"><div><span className="eyebrow">CONTRIBUTOR AREA</span><h2>Add photographs</h2><p>Create a new event or add photographs to an existing event. Existing event links remain unchanged.</p></div></div>
-      {!loggedIn ? <div className="login"><label>Administrator password<input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="Enter admin password" onKeyDown={e=>e.key==='Enter'&&signIn()}/></label><button className="primary" onClick={signIn}>Continue</button><small>Prototype sign-in: the password is checked by the upload service when you upload.</small></div> : <div className="signed-in"><span>✓ Administrator session active</span><button className="quiet" onClick={signOut}>Sign out</button></div>}
+
+<div className="signed-in">
+  <span>✓ Administrator session active</span>
+  <button className="quiet" onClick={signOut}>Sign out</button>
+</div>
       <label className="caption-label event-title-label">Add to existing event<select value={appendEventId} onChange={e=>setAppendEventId(e.target.value)}><option value="">Create a new event instead</option>{events.map(event=><option key={event.id} value={event.id}>{event.title} ({event.eventDate})</option>)}</select></label>{!appendEventId && <label className="caption-label event-title-label">Event name<input value={eventTitle} onChange={e=>setEventTitle(e.target.value)} placeholder="e.g. Rudrabhishekam - Fremont" /></label>}{!appendEventId && <label className="caption-label event-title-label">Event date<input type="date" value={eventDate} onChange={e=>setEventDate(e.target.value)} /></label>}
       <label className="dropzone"><input type="file" accept="image/*" multiple onChange={e=>setFiles(Array.from(e.target.files || []))}/><span className="plus">＋</span><strong>Select photographs</strong><span>Choose multiple images from your device</span></label>
       {files.length>0 && <><p className="file-summary">{files.length} selected: {selectedNames}</p><div className="preview-row">{localPreviews.map((url,i)=><img key={url} src={url} alt={`Selected photo ${i+1}`}/>)}</div><label className="caption-label">Caption (optional, applies to all selected photos)<textarea value={caption} onChange={e=>setCaption(e.target.value)} placeholder="Add a description or leave blank" rows={3}/></label><button className="primary upload-button" disabled={busy || !loggedIn} onClick={()=>void upload()}>{busy?'Uploading…':'Upload event photographs'}</button></>}
@@ -168,6 +233,8 @@ export default function App() {
         }}><img src={event.coverUrl} alt=""/><span className="event-card-body"><strong>{event.title}</strong><small>{new Date(`${event.eventDate}T12:00:00`).toLocaleDateString()} · {event.photoCount} photographs</small><span className="event-open">View photographs →</span></span></button>)}</div> : <div className="empty"><h3>No events for this month</h3><p>Choose another month or change your search.</p></div>; })()}
       </>}
     </section>}
+          </>
+    )}
     {lightboxPhoto && <div className="lightbox" role="dialog" aria-modal="true" aria-label="Photo viewer" onClick={()=>setLightboxPhoto(null)}>
       <button className="lightbox-close" type="button" aria-label="Close photo" onClick={()=>setLightboxPhoto(null)}>×</button>
       <button className="lightbox-nav lightbox-prev" type="button" aria-label="Previous photograph" disabled={lightboxIndex <= 0} onClick={event=>{event.stopPropagation();moveLightbox(-1);}}>‹</button>

@@ -3,8 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 type Photo = { id: string; caption: string; uploadedAt: string; imageUrl: string; originalUrl: string; eventId?: string; eventTitle?: string };
 type PhotoEvent = { id: string; title: string; eventDate: string; createdAt: string; photoCount: number; coverUrl: string; photos: Photo[] };
 const API = import.meta.env.VITE_API_BASE || '';
-const PUBLIC_BASE = import.meta.env.VITE_PUBLIC_BASE_URL || (typeof window !== 'undefined' ? window.location.origin : '');
-const PHOTO_BASE = API || (typeof window !== 'undefined' ? window.location.origin : '');
+const PUBLIC_BASE = 'https://periyavaamandali.org';
 async function makeDisplay(file: File): Promise<Blob> {
   const bitmap = await createImageBitmap(file); const max = 1800; const scale = Math.min(1, max / Math.max(bitmap.width, bitmap.height));
   const canvas = document.createElement('canvas'); canvas.width = Math.round(bitmap.width * scale); canvas.height = Math.round(bitmap.height * scale);
@@ -89,8 +88,11 @@ async function signIn() {
     } catch (e) { setMessage(`Upload stopped after ${successes} successful photo(s): ${e instanceof Error ? e.message : 'Unknown error'}`); }
     finally { setBusy(false); }
   }
-  async function copyLink(id: string) { await navigator.clipboard.writeText(`${PHOTO_BASE}/p/${id}`); setMessage('Photo link copied. Paste it into WhatsApp.'); }
-  async function deletePhoto(photo: Photo) {
+async function copyLink(id: string) {
+  await navigator.clipboard.writeText(`${PUBLIC_BASE}/p/${id}`);
+  setMessage('Photo link copied. Paste it into WhatsApp.');
+}
+async function deletePhoto(photo: Photo) {
     if (!loggedIn || !adminMode) return;
     if (!window.confirm(`Permanently delete this photograph? This cannot be undone.`)) return;
 
@@ -130,8 +132,11 @@ async function signIn() {
     }
   }
   async function copyEventLink(id: string) { await navigator.clipboard.writeText(`${PUBLIC_BASE}/e/${id}`); setMessage('Event link copied. Paste it into WhatsApp.'); }
-  function shareWhatsApp(photo: Photo) { const link = `${PHOTO_BASE}/p/${photo.id}`; window.open(`https://wa.me/?text=${encodeURIComponent(`${photo.caption ? photo.caption + '\n\n' : ''}${link}`)}`, '_blank', 'noopener,noreferrer'); }
-  function shareEvent(event: PhotoEvent) { const link = `${PUBLIC_BASE}/e/${event.id}`; window.open(`https://wa.me/?text=${encodeURIComponent(`${event.title}\n${link}`)}`, '_blank', 'noopener,noreferrer'); }
+function shareWhatsApp(photo: Photo) {
+  const link = `${PUBLIC_BASE}/p/${photo.id}`;
+  window.open(`https://wa.me/?text=${encodeURIComponent(`${photo.caption ? photo.caption + '\n\n' : ''}${link}`)}`, '_blank', 'noopener,noreferrer');
+}
+function shareEvent(event: PhotoEvent) { const link = `${PUBLIC_BASE}/e/${event.id}`; window.open(`https://wa.me/?text=${encodeURIComponent(`${event.title}\n${link}`)}`, '_blank', 'noopener,noreferrer'); }
   const activeEvent = selectedEvent ? events.find(e => e.id === selectedEvent.id) || selectedEvent : null;
   const lightboxIndex = activeEvent && lightboxPhoto
     ? activeEvent.photos.findIndex(photo => photo.id === lightboxPhoto.id)
@@ -170,7 +175,7 @@ async function signIn() {
     return () => window.removeEventListener('keydown', handleLightboxKey);
   }, [lightboxPhoto, activeEvent]);
   return <main className="shell">
-    <header className="site-header"><div className="brand-lockup"><img className="brand-mark" src="https://kksfusa.org/favicon.ico" alt="KKSF logo" onError={e=>{e.currentTarget.style.display='none';}}/><div className="brand-copy"><h1>Kanchi Mutt Photo Gallery</h1><p>Gallery of KKSF events</p></div></div></header>
+    <header className="site-header"><div className="brand-lockup"><img className="brand-mark" src="https://kksfusa.org/favicon.ico" alt="KKSF logo" onError={e=>{e.currentTarget.style.display='none';}}/><div className="brand-copy"><h1>Kanchi Mutt Photo Gallery</h1><p>KKSF / Sacramento MahaPeriyavaa Mandali / Coimbatore Periyavaa Mandali Events</p></div></div></header>
     <div className="banner-frame"><img className="community-banner" src="/kanchi-mutt-banner.jpeg" alt="Kanchi Mutt spiritual teachers and devotional imagery" /></div>
        {adminMode && !loggedIn ? (
       <section className="admin-login-gateway">
